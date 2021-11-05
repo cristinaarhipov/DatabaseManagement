@@ -1,53 +1,47 @@
-test=> Create TABLE movies2 (
-test(> url text,
-test(> title text,
-test(> ReleaseDate text,
-test(> Distributor text,
-test(> Starring text,
-test(> Summary text,
-test(> Director text,
-test(> Genre text,
-test(> Rating text,
-test(> Runtime text,
-test(> Userscore text,
-test(> Metascore text,
-test(> scoreCounts text
-test(> );
-CREATE TABLE
-test=> \Copy movies2 FROM '/home/pi/RSL/moviesFromMetaCritic.csv' DELIMITER ';' CSV HEADER;
-/home/pi/RSL/moviesFromMetaCritic.csv: No such file or directory
-test=> \COPY movies2 FROM '/home/pi/RSL/moviesFromMetacritic.csv' DELIMIER ';' CSV HEADER;
-ERROR:  syntax error at or near "DELIMIER"
-LINE 1: COPY  movies2 FROM STDIN DELIMIER ';' CSV HEADER;
-                                 ^
-test=> \COPY movies2 FROM '/home/pi/RSL/moviesFromMetacritic.csv' DELIMITER ';' CSV HEADER;
-COPY 5229
-test=> SELECT * FROM movies2 WHERE url='alvin=and-the-chipmunks-chipwrecked';
- url | title | releasedate | distributor | starring | summary | director | genre | rating | runtime | userscore | metascore | scorecounts 
------+-------+-------------+-------------+----------+---------+----------+-------+--------+---------+-----------+-----------+-------------
-(0 rows)
+/* Running the psql test */
+psql test
 
-test=> SELECT * FROM movies2 WHERE url='alvin-and-the-chipmunks-chipwrecked';
-test=> ALTER TABLE movies2 ADD lexemesTitle tsvector;
-ALTER TABLE
-test=> UPDATE movies2 SET lexemesTitle=to_tsvector(Title);
-UPDATE 5229
-test=> SELECT url FROM movies2 WHERE lexemesTitle @@to_tsquery('alvin');
-                  url                   
-----------------------------------------
- alvin-and-the-chipmunks-chipwrecked
- alvin-and-the-chipmunks-the-road-chip
- alvin-and-the-chipmunks
- alvin-and-the-chipmunks-the-squeakquel
-(4 rows)
+/* Creating a table called movies2 with different columns in it in order to use it in the next codes */
+Create TABLE movies2 (
+url text,
+title text,
+ReleaseDate text,
+Distributor text,
+Starring text,
+Summary text,
+Director text,
+Genre text,
+Rating text,
+Runtime text,
+Userscore text,
+Metascore text,
+scoreCounts text
+);
 
-test=> ALTER TABLE movies2 ADD rank float4;
-ALTER TABLE
+/* Importing the data for the movies2 table created above from the csv file */                                 ^
+\COPY movies2 FROM '/home/pi/RSL/moviesFromMetacritic.csv' DELIMITER ';' CSV HEADER;
+
+/* Selecting my favourite movie from all other movies */
+SELECT * FROM movies2 WHERE url='alvin-and-the-chipmunks-chipwrecked';
+
+/* Creating the lexemesTitle column */
+ALTER TABLE movies2 ADD lexemesTitle tsvector;
+
+/* Searching the text based on Title to fill in the lexemesTitle column created above */
+UPDATE movies2 SET lexemesTitle=to_tsvector(Title);
+
+/* Select movies from movies2 table where the lexemesTitle has the word "Alvin" in it to get other movies that have the word "Alvin" in the lexemesTitle */
+SELECT url FROM movies2 WHERE lexemesTitle @@to_tsquery('alvin');
+
+/* Adding a column rank that shows the type of data that can be entered in a specific column*/
+ALTER TABLE movies2 ADD rank float4;
+
+/* Updating the table movies2 with a rank for each movie based on the user's input for movie "alvin and the cipmunks chipwrecked" */
 test=> UPDATE movies2 SET rank=ts_rank(lexemesTitle,plainto_tsquery((SELECT Title FROM movies2 WHERE url='alvin-and-the-chipmunks-chipwrecked')));
-UPDATE 5229
-test=> CREATE TABLE recommendationsBasedOnTitleField AS SELECT url, rank FROM movies2 WHERE rank >-1 ORDER BY rank DESC LIMIT 50;
-ERROR:  relation "recommendationsbasedontitlefield" already exists
-test=> CREATE TABLE recommendationsBasedOnTitleField1 AS SELECT url, rank FROM movies2 WHERE rank >-1 ORDER BY rank DESC LIMIT 50;
-SELECT 50
-test=> \COPY (SELECT * FROM recommendationsBasedOnTitleField1) to '/home/pi/RSL/top50recommendationsTitle.csv' WITH csv;
-COPY 50
+
+*/ Creating another table called "RecommendationsBasedOnTitleField based on the given input, but limiting it to 50 recommendations */
+CREATE TABLE recommendationsBasedOnTitleField1 AS SELECT url, rank FROM movies2 WHERE rank >-1 ORDER BY rank DESC LIMIT 50;
+
+/* Copying the Recommendations based on Title table to a separate csv file in the RSL folder. Thus, creating Top 50 recommendations based on title */
+\COPY (SELECT * FROM recommendationsBasedOnTitleField1) to '/home/pi/RSL/top50recommendationsTitle.csv' WITH csv;
+
